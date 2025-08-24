@@ -1,0 +1,34 @@
+<?xml version="1.0"?>
+<doc>
+    <assembly>
+        <name>SpotAward</name>
+    </assembly>
+    <members>
+        <member name="M:SpotAward.CONTROLLERS.SpotAwardController.SubmitRequest(SpotAward.Models.SubmitSpotAwardRequestDTO)">
+            <summary>
+            Validate if a spot award request is allowed for the initiator
+            </summary>
+            <param name="initiatorMEmpID">The employee ID of the initiator</param>
+            <param name="nomineeMEmpID">The employee ID of the nominee</param>
+            <param name="initiatorMGID">The management group ID of the initiator</param>
+            <returns>Validation result with authorization status</returns>
+            <response code="200">Returns the validation result</response>
+        </member>
+        <member name="M:SpotAward.CONTROLLERS.SpotAwardController.GetEmployees(System.String)">
+            <summary>
+            Get a list of eligible employee names based on search criteria
+            </summary>
+            <param name="name">Search by employee name</param>
+            <returns>A list of eligible employee names</returns>
+            <response code="200">Returns the list of eligible employee names</response>
+        </member>
+        <member name="M:SpotAward.CONTROLLERS.SpotAwardController.IsRMPHGHTH(System.Int32)">
+            <summary>
+            Check if the user is authorized to initiate the request (RM/PH/GH/TH)
+            </summary>
+            <param name="initiatorMEmpID">The employee ID of the initiator</param>
+            <returns>True if user is authorized, false otherwise</returns>
+            <response code="200">Returns authorization status</response>
+        </member>
+    </members>
+</doc>

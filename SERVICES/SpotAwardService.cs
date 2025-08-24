@@ -37,10 +37,25 @@ namespace SpotAward.SERVICES
             _businessLogic = new SpotAwardBusinessLogic(_connectionString);
         }
 
-        public ValidationResult ValidateRequest(int initiatorMEmpID, int nomineeMEmpID, int initiatorMGID)
+        public ValidationResult ValidateRequest(int initiatorMEmpID)
         {
-            return _businessLogic.ValidateSpotAwardRequest(initiatorMEmpID, nomineeMEmpID, initiatorMGID);
+            // For demo purposes, we'll just check if the user is authorized
+            // You can add more validation logic here as needed
+            bool isAuthorized = IsUserAuthorized(initiatorMEmpID);
+            
+            return new ValidationResult
+            {
+                IsAuthorized = isAuthorized,
+                IsNewRequestAllowed = isAuthorized, // Assuming if authorized, they can make a new request
+                IsEligibleNominee = true, // Default to true since we're not validating nominee here
+                Message = isAuthorized ? "Validation successful" : "User is not authorized"
+            };
         }
+
+        //public ValidationResult ValidateRequest(int initiatorMEmpID, int nomineeMEmpID, int initiatorMGID)
+        //{
+        //    return _businessLogic.ValidateSpotAwardRequest(initiatorMEmpID, nomineeMEmpID, initiatorMGID);
+        //}
 
         public int CreateSpotAwardRequest(int initiatorMEmpID, int nomineeMEmpID, string justification, int initiatorMGID, bool isGHTHInitiated = false)
         {
@@ -59,9 +74,9 @@ namespace SpotAward.SERVICES
             return _businessLogic.SubmitSpotAwardRequest(request);
         }
 
-        public QuotaDetails GetQuotaInformation(int mEmpID, int year = 0)
+        public QuotaDetails GetQuotaInformation(int depMGID)
         {
-            return _businessLogic.GetQuotaDetails(mEmpID, year);
+            return _businessLogic.GetQuotaDetails(depMGID);
         }
 
         public List<EmployeeDetails> GetEmployeeList(string employeeName = null)
@@ -82,9 +97,14 @@ namespace SpotAward.SERVICES
             return _businessLogic.GetSpotAwardDetails(sAID);
         }
 
-        public List<SpotAwardRequest> GetDepartmentHistory(int depMGID)
+        //public List<SpotAwardRequest> GetDepartmentHistory(int depMGID)
+        //{
+        //    return _businessLogic.GetNominationHistory(depMGID);
+        //}
+
+        public bool IsUserAuthorized(int initiatorMEmpID)
         {
-            return _businessLogic.GetNominationHistory(depMGID);
+            return _businessLogic.IsUserAuthorized(initiatorMEmpID);
         }
     }
 }

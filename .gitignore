@@ -1,17 +1,2 @@
-# Build Folders
-bin/
-obj/
-
-# Visual Studio files
+# Visual Studio workspace files
 .vs/
-
-# User-specific files
-*.user
-*.suo
-
-# Temporary files
-*.log
-*.vsidx
-
-# Config
-appsettings.Development.json

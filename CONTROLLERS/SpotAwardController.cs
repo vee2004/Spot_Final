@@ -4,6 +4,8 @@ using SpotAward.Models;
 using System.Linq;
 using System;
 using System.Collections.Generic;
+using Microsoft.AspNetCore.Mvc.ApiExplorer;
+using System.ComponentModel.DataAnnotations;
 
 #nullable enable
 
@@ -40,32 +42,32 @@ namespace SpotAward.CONTROLLERS
         }
 
         /// <summary>
-        /// Validate if a spot award request is allowed
+        /// Validate if a spot award request is allowed for the initiator
         /// </summary>
         /// <param name="initiatorMEmpID">The employee ID of the initiator</param>
         /// <param name="nomineeMEmpID">The employee ID of the nominee</param>
-        /// <param name="initiatorMGID">The manager group ID of the initiator</param>
+        /// <param name="initiatorMGID">The management group ID of the initiator</param>
         /// <returns>Validation result with authorization status</returns>
         /// <response code="200">Returns the validation result</response>
-        [HttpGet("validate")]
-        public IActionResult ValidateRequest(
-            [FromQuery] int initiatorMEmpID,
-            [FromQuery] int nomineeMEmpID,
-            [FromQuery] int initiatorMGID)
-        {
-            var result = _spotAwardService.ValidateRequest(
-                initiatorMEmpID,
-                nomineeMEmpID,
-                initiatorMGID
-            );
+        //[HttpGet("validate")]
+        //public IActionResult ValidateRequest(
+        //    [FromQuery] int initiatorMEmpID,
+        //    [FromQuery] int nomineeMEmpID,
+        //    [FromQuery] int initiatorMGID)
+        //{
+        //    var result = _spotAwardService.ValidateRequest(
+        //        initiatorMEmpID,
+        //        nomineeMEmpID,
+        //        initiatorMGID
+        //    );
 
-            return Ok(new
-            {
-                success = result.IsAuthorized && result.IsNewRequestAllowed && result.IsEligibleNominee,
-                data = result,
-                message = result.Message
-            });
-        }
+        //    return Ok(new
+        //    {
+        //        success = result.IsAuthorized && result.IsNewRequestAllowed && result.IsEligibleNominee,
+        //        data = result,
+        //        message = result.Message
+        //    });
+        //}
 
         [HttpPost("submit")]
         public IActionResult SubmitRequest([FromBody] SubmitSpotAwardRequestDTO requestData)
@@ -87,10 +89,15 @@ namespace SpotAward.CONTROLLERS
         }
 
 
-        [HttpGet("quota/{mEmpID}")]
-        public IActionResult GetQuota(int mEmpID, int year = 0)
+        [HttpGet("quota/{depMGID}")]
+        public IActionResult GetQuota([FromRoute][System.ComponentModel.DataAnnotations.Required] int depMGID)
         {
-            var quota = _spotAwardService.GetQuotaInformation(mEmpID, year);
+            if (depMGID <= 0)
+            {
+                return BadRequest(new { success = false, message = "Department MGID must be a positive number" });
+            }
+            
+            var quota = _spotAwardService.GetQuotaInformation(depMGID);
             return Ok(new { success = true, data = quota, message = "Quota details retrieved successfully." });
         }
 
@@ -141,11 +148,44 @@ namespace SpotAward.CONTROLLERS
             return Ok(new { success = true, data = details, message = "Request details retrieved successfully." });
         }
 
-        [HttpGet("history/{depMGID}")]
-        public IActionResult GetHistory(int depMGID)
+        //[HttpGet("history/{depMGID}")]
+        //public IActionResult GetHistory(int depMGID)
+        //{
+        //    var history = _spotAwardService.GetDepartmentHistory(depMGID);
+        //    return Ok(new { success = true, data = history, message = "Department history retrieved successfully." });
+        //}
+
+        /// <summary>
+        /// Check if the user is authorized to initiate the request (RM/PH/GH/TH)
+        /// </summary>
+        /// <param name="initiatorMEmpID">The employee ID of the initiator</param>
+        /// <returns>True if user is authorized, false otherwise</returns>
+        /// <response code="200">Returns authorization status</response>
+        [HttpGet("isAuthorized")]
+        [ProducesResponseType(typeof(object), 200)]
+        [ProducesResponseType(typeof(object), 500)]
+        public IActionResult IsRMPHGHTH([FromQuery] int initiatorMEmpID)
         {
-            var history = _spotAwardService.GetDepartmentHistory(depMGID);
-            return Ok(new { success = true, data = history, message = "Department history retrieved successfully." });
+            try
+            {
+                bool isAuthorized = _spotAwardService.IsUserAuthorized(initiatorMEmpID);
+                
+                return Ok(new
+                {
+                    success = true,
+                    data = isAuthorized,
+                    message = isAuthorized ? "User is authorized." : "User is not authorized."
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new
+                {
+                    success = false,
+                    data = false,
+                    message = $"Error checking authorization: {ex.Message}"
+                });
+            }
         }
     }
 }

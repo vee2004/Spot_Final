@@ -93,11 +93,11 @@ namespace SpotAward.BUSINESSLOGIC
             }
         }
 
-        public QuotaDetails GetQuotaDetails(int mEmpID, int year = 0)
+        public QuotaDetails GetQuotaDetails(int depMGID)
         {
             try
             {
-                return _dataAccess.GetDepartmentWiseQuotaDetails(mEmpID, year);
+                return _dataAccess.GetDepartmentWiseQuotaDetails(depMGID);
             }
             catch (Exception ex)
             {
@@ -144,15 +144,33 @@ namespace SpotAward.BUSINESSLOGIC
             }
         }
 
-        public List<SpotAwardRequest> GetNominationHistory(int depMGID)
+        //public List<SpotAwardRequest> GetNominationHistory(int depMGID)
+        //{
+        //    try
+        //    {
+        //        return _dataAccess.GetQuotaAndWFDetailsByMGID(depMGID);
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        throw new Exception($"Error retrieving nomination history: {ex.Message}");
+        //    }
+        //}
+
+        public bool IsUserAuthorized(int initiatorMEmpID)
         {
             try
             {
-                return _dataAccess.GetQuotaAndWFDetailsByMGID(depMGID);
+                if (initiatorMEmpID <= 0)
+                {
+                    throw new ArgumentException("Employee ID must be greater than zero", nameof(initiatorMEmpID));
+                }
+                
+                return _dataAccess.IsRMPHGHTH(initiatorMEmpID);
             }
             catch (Exception ex)
             {
-                throw new Exception($"Error retrieving nomination history: {ex.Message}");
+                // Log the exception details here if you have a logging mechanism
+                throw new Exception($"Error checking user authorization: {ex.Message}", ex);
             }
         }
     }

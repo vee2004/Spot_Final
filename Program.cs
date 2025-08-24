@@ -1,5 +1,6 @@
 using Microsoft.OpenApi.Models;
 using System.IO;
+using SpotAward;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -18,6 +19,8 @@ builder.Services.AddSwaggerGen(c =>
     var xmlFile = $"{System.Reflection.Assembly.GetExecutingAssembly().GetName().Name}.xml";
     var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFile);
     c.IncludeXmlComments(xmlPath);
+    
+    // Removed the SwaggerOperationFilter as it's no longer needed
 });
 
 var app = builder.Build();

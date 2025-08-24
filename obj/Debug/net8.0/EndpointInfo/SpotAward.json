@@ -1,0 +1,232 @@
+{
+  "openapi": "3.0.4",
+  "info": {
+    "title": "Spot Award API",
+    "version": "v1"
+  },
+  "paths": {
+    "/api/SpotAward/submit": {
+      "post": {
+        "tags": [
+          "SpotAward"
+        ],
+        "summary": "Validate if a spot award request is allowed for the initiator",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SubmitSpotAwardRequestDTO"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SubmitSpotAwardRequestDTO"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/SubmitSpotAwardRequestDTO"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Returns the validation result"
+          }
+        }
+      }
+    },
+    "/api/SpotAward/quota/{depMGID}": {
+      "get": {
+        "tags": [
+          "SpotAward"
+        ],
+        "parameters": [
+          {
+            "name": "depMGID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/SpotAward/employees": {
+      "get": {
+        "tags": [
+          "SpotAward"
+        ],
+        "summary": "Get a list of eligible employee names based on search criteria",
+        "parameters": [
+          {
+            "name": "name",
+            "in": "query",
+            "description": "Search by employee name",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Returns the list of eligible employee names",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/EmployeeNameListResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EmployeeNameListResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EmployeeNameListResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/SpotAward/details/{sAID}": {
+      "get": {
+        "tags": [
+          "SpotAward"
+        ],
+        "parameters": [
+          {
+            "name": "sAID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/SpotAward/isAuthorized": {
+      "get": {
+        "tags": [
+          "SpotAward"
+        ],
+        "summary": "Check if the user is authorized to initiate the request (RM/PH/GH/TH)",
+        "parameters": [
+          {
+            "name": "initiatorMEmpID",
+            "in": "query",
+            "description": "The employee ID of the initiator",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Returns authorization status",
+            "content": {
+              "text/plain": {
+                "schema": { }
+              },
+              "application/json": {
+                "schema": { }
+              },
+              "text/json": {
+                "schema": { }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "text/plain": {
+                "schema": { }
+              },
+              "application/json": {
+                "schema": { }
+              },
+              "text/json": {
+                "schema": { }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "EmployeeNameListResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "data": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          },
+          "message": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "SubmitSpotAwardRequestDTO": {
+        "required": [
+          "initiatorMEmpID",
+          "initiatorMGID",
+          "justification",
+          "nomineeMEmpID"
+        ],
+        "type": "object",
+        "properties": {
+          "initiatorMEmpID": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "nomineeMEmpID": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "initiatorMGID": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "justification": {
+            "maxLength": 500,
+            "minLength": 0,
+            "type": "string"
+          },
+          "isGHTHInitiated": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  }
+}

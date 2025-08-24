@@ -20,13 +20,15 @@ namespace SpotAward.Models
     }
 
     public class QuotaDetails
-    {
-        public int HeadCount { get; set; }
-        public int IssuedCount { get; set; }
-        public int AwardInPipeline { get; set; }
-        public int BalanceCount { get; set; }
-        public int AllottedQuota { get; set; }
-    }
+{
+    public string DeptName { get; set; } = string.Empty;
+    public int HeadCount { get; set; }
+    public int IssuedCount { get; set; }
+    public int AwardInPipeline { get; set; }
+    public int BalanceCount { get; set; }
+    public int AllottedQuota { get; set; }
+}
+
 
     public class ValidationResult
     {
@@ -71,11 +73,7 @@ namespace SpotAward.Models
         [Required]
         public int InitiatorMEmpID { get; set; }
 
-        [Required]
-        public int NomineeMEmpID { get; set; }
-
-        [Required]
-        public int InitiatorMGID { get; set; }
+        
     }
 
     public class EmployeeNameDTO

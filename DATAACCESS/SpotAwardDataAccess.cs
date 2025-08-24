@@ -29,6 +29,11 @@ namespace SpotAward.DATAACCESS
             
             try
             {
+                if (initiatorMEmpID <= 0)
+                {
+                    throw new ArgumentException("Employee ID must be greater than zero", nameof(initiatorMEmpID));
+                }
+                
                 using (SqlConnection connection = new SqlConnection(_connectionString))
                 {
                     SqlCommand cmd = new SqlCommand("SpotAwardWF_IsRMPHGHTH", connection);
@@ -36,71 +41,102 @@ namespace SpotAward.DATAACCESS
                     
                     cmd.Parameters.AddWithValue("@InitiatorMEmpID", initiatorMEmpID);
                     
-                    connection.Open();
-                    
-                    SqlDataAdapter da = new SqlDataAdapter(cmd);
-                    DataTable dt = new DataTable();
-                    da.Fill(dt);
-                    
-                    foreach (DataRow dr in dt.Rows)
+                    try
                     {
-                        isRM = Convert.ToBoolean(dr["ISRM"]);
-                        isGHTH = Convert.ToBoolean(dr["ISGHTH"]);
+                        connection.Open();
+                    }
+                    catch (SqlException sqlEx)
+                    {
+                        throw new Exception($"Database connection error: {sqlEx.Message}", sqlEx);
                     }
                     
-                    dt.Dispose();
-                    cmd.Dispose();
+                    try
+                    {
+                        SqlDataAdapter da = new SqlDataAdapter(cmd);
+                        DataTable dt = new DataTable();
+                        da.Fill(dt);
+                        
+                        if (dt.Rows.Count > 0)
+                        {
+                            foreach (DataRow dr in dt.Rows)
+                            {
+                                // Check if columns exist before accessing them
+                                if (dt.Columns.Contains("ISRM") && dt.Columns.Contains("ISGHTH"))
+                                {
+                                    isRM = dr["ISRM"] != DBNull.Value ? Convert.ToBoolean(dr["ISRM"]) : false;
+                                    isGHTH = dr["ISGHTH"] != DBNull.Value ? Convert.ToBoolean(dr["ISGHTH"]) : false;
+                                }
+                                else
+                                {
+                                    throw new Exception("Required columns (ISRM, ISGHTH) not found in the result set");
+                                }
+                            }
+                        }
+                        
+                        dt.Dispose();
+                    }
+                    finally
+                    {
+                        cmd.Dispose();
+                        if (connection.State == ConnectionState.Open)
+                        {
+                            connection.Close();
+                        }
+                    }
                 }
             }
             catch (Exception ex)
             {
-                throw new Exception($"Error checking authorization: {ex.Message}");
+                // Log the exception details here if you have a logging mechanism
+                throw new Exception($"Error checking authorization: {ex.Message}", ex);
             }
             
             return isRM || isGHTH;
         }
 
         // Function 2: Load quota details for department
-        public QuotaDetails GetDepartmentWiseQuotaDetails(int mEmpID, int year = 0)
+        public QuotaDetails GetDepartmentWiseQuotaDetails(int depMGID)
+{
+    QuotaDetails quotaDetails = new QuotaDetails();
+
+    // ✅ Always use current year
+    int year = DateTime.Now.Year;
+
+    try
+    {
+        using (SqlConnection connection = new SqlConnection(_connectionString))
         {
-            QuotaDetails quotaDetails = new QuotaDetails();
-            
-            if (year == 0)
-                year = DateTime.Now.Year;
-                
-            try
+            SqlCommand cmd = new SqlCommand("SpotAwardWF_GetAllQuotaDetails", connection);
+            cmd.CommandType = CommandType.StoredProcedure;
+
+            // ✅ Parameters
+            cmd.Parameters.AddWithValue("@DepMGID", depMGID);
+            cmd.Parameters.AddWithValue("@Year", year);
+
+            connection.Open();
+
+            using (SqlDataReader reader = cmd.ExecuteReader())
             {
-                using (SqlConnection connection = new SqlConnection(_connectionString))
+                if (reader.Read())
                 {
-                    SqlCommand cmd = new SqlCommand("SpotAwardWF_GetAllQuotaDetails", connection);
-                    cmd.CommandType = CommandType.StoredProcedure;
-                    
-                    cmd.Parameters.AddWithValue("@MEmpID", mEmpID);
-                    cmd.Parameters.AddWithValue("@Year", year);
-                    
-                    connection.Open();
-                    
-                    SqlDataReader reader = cmd.ExecuteReader();
-                    if (reader.Read())
-                    {
-                        quotaDetails.HeadCount = Convert.ToInt32(reader["HeadCount"]);
-                        quotaDetails.IssuedCount = Convert.ToInt32(reader["IssuedCount"]);
-                        quotaDetails.AwardInPipeline = Convert.ToInt32(reader["AwardInPipeline"]);
-                        quotaDetails.BalanceCount = Convert.ToInt32(reader["BalanceCount"]);
-                        quotaDetails.AllottedQuota = Convert.ToInt32(reader["AllottedQuota"]);
-                    }
-                    
-                    reader.Close();
-                    cmd.Dispose();
+                    quotaDetails.DeptName        = reader["DeptName"]        != DBNull.Value ? reader["DeptName"].ToString() : string.Empty;
+                    quotaDetails.HeadCount       = reader["HeadCount"]       != DBNull.Value ? Convert.ToInt32(reader["HeadCount"]) : 0;
+                    quotaDetails.IssuedCount     = reader["IssuedCount"]     != DBNull.Value ? Convert.ToInt32(reader["IssuedCount"]) : 0;
+                    quotaDetails.AwardInPipeline = reader["AwardInPipeline"] != DBNull.Value ? Convert.ToInt32(reader["AwardInPipeline"]) : 0;
+                    quotaDetails.BalanceCount    = reader["BalanceCount"]    != DBNull.Value ? Convert.ToInt32(reader["BalanceCount"]) : 0;
+                    quotaDetails.AllottedQuota   = reader["AllottedQuota"]   != DBNull.Value ? Convert.ToInt32(reader["AllottedQuota"]) : 0;
                 }
             }
-            catch (Exception ex)
-            {
-                throw new Exception($"Error loading quota details: {ex.Message}");
-            }
-            
-            return quotaDetails;
         }
+    }
+    catch (Exception ex)
+    {
+        throw new Exception($"Error loading quota details: {ex.Message}");
+    }
+
+    return quotaDetails;
+}
+
 
         // Function 3: Get employee details for nomination (autocomplete)
         public List<EmployeeDetails> GetLiveEmployeeDetails(string? employeeName = null)
@@ -325,47 +361,47 @@ namespace SpotAward.DATAACCESS
         }
 
         // Get nomination history for department
-        public List<SpotAwardRequest> GetQuotaAndWFDetailsByMGID(int depMGID)
-        {
-            List<SpotAwardRequest> nominations = new List<SpotAwardRequest>();
+        //public List<SpotAwardRequest> GetQuotaAndWFDetailsByMGID(int depMGID)
+        //{
+        //    List<SpotAwardRequest> nominations = new List<SpotAwardRequest>();
             
-            try
-            {
-                using (SqlConnection connection = new SqlConnection(_connectionString))
-                {
-                    SqlCommand cmd = new SqlCommand("SpotAwardWF_GetQuotaANDWFDetailsByMGID", connection);
-                    cmd.CommandType = CommandType.StoredProcedure;
+        //    try
+        //    {
+        //        using (SqlConnection connection = new SqlConnection(_connectionString))
+        //        {
+        //            SqlCommand cmd = new SqlCommand("SpotAwardWF_GetQuotaANDWFDetailsByMGID", connection);
+        //            cmd.CommandType = CommandType.StoredProcedure;
                     
-                    cmd.Parameters.AddWithValue("@DepMGID", depMGID);
+        //            cmd.Parameters.AddWithValue("@DepMGID", depMGID);
                     
-                    connection.Open();
+        //            connection.Open();
                     
-                    SqlDataReader reader = cmd.ExecuteReader();
-                    while (reader.Read())
-                    {
-                        nominations.Add(new SpotAwardRequest
-                        {
-                            SAID = Convert.ToInt32(reader["SAID"]),
-                            InitiatorMEmpID = Convert.ToInt32(reader["InitiatorMEmpID"]),
-                            NomineeMEmpID = Convert.ToInt32(reader["NomineeMEmpID"]),
-                            Justification = reader["Justification"]?.ToString() ?? string.Empty,
-                            IsGHTHInitiated = Convert.ToBoolean(reader["IsGHTHInitiated"]),
-                            IsDelivered = Convert.ToBoolean(reader["IsDelivered"]),
-                            InitiatorMGID = Convert.ToInt32(reader["InitiatorMGID"]),
-                            CreatedDate = Convert.ToDateTime(reader["CreatedDate"])
-                        });
-                    }
+        //            SqlDataReader reader = cmd.ExecuteReader();
+        //            while (reader.Read())
+        //            {
+        //                nominations.Add(new SpotAwardRequest
+        //                {
+        //                    SAID = Convert.ToInt32(reader["SAID"]),
+        //                    InitiatorMEmpID = Convert.ToInt32(reader["InitiatorMEmpID"]),
+        //                    NomineeMEmpID = Convert.ToInt32(reader["NomineeMEmpID"]),
+        //                    Justification = reader["Justification"]?.ToString() ?? string.Empty,
+        //                    IsGHTHInitiated = Convert.ToBoolean(reader["IsGHTHInitiated"]),
+        //                    IsDelivered = Convert.ToBoolean(reader["IsDelivered"]),
+        //                    InitiatorMGID = Convert.ToInt32(reader["InitiatorMGID"]),
+        //                    CreatedDate = Convert.ToDateTime(reader["CreatedDate"])
+        //                });
+        //            }
                     
-                    reader.Close();
-                    cmd.Dispose();
-                }
-            }
-            catch (Exception ex)
-            {
-                throw new Exception($"Error loading nomination history: {ex.Message}");
-            }
+        //            reader.Close();
+        //            cmd.Dispose();
+        //        }
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        throw new Exception($"Error loading nomination history: {ex.Message}");
+        //    }
             
-            return nominations;
-        }
+        //    return nominations;
+        //}
     }
 }
