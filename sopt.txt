@@ -1,0 +1,103 @@
+public int CreateSpotAwardRequest(
+    int initiatorMEmpID,
+    int nomineeMEmpID,
+    string justification,
+    int initiatorMGID,
+    bool isGHTHInitiated = false,
+    bool isDelivered = false) // added for SP alignment
+{
+    var request = new SpotAwardRequest
+    {
+        SAID = 0, // for new insert
+        InitiatorMEmpID = initiatorMEmpID,
+        NomineeMEmpID = nomineeMEmpID,
+        Justification = justification,
+        IsGHTHInitiated = isGHTHInitiated,
+        IsDelivered = isDelivered, // ✅ now passed as param
+        InitiatorMGID = initiatorMGID,
+        CreatedDate = DateTime.Now
+    };
+
+    return _businessLogic.SubmitSpotAwardRequest(request);
+}
+
+
+[HttpPost("submit")]
+public IActionResult SubmitRequest([FromBody] SubmitSpotAwardRequestDTO requestData)
+{
+    int newSAID = _spotAwardService.CreateSpotAwardRequest(
+        requestData.InitiatorMEmpID,
+        requestData.NomineeMEmpID,
+        requestData.Justification,
+        requestData.InitiatorMGID,
+        requestData.IsGHTHInitiated,
+        requestData.IsDelivered  // NEW
+    );
+
+    return Ok(new
+    {
+        success = true,
+        data = new { SAID = newSAID },
+        message = "Spot award request submitted successfully."
+    });
+}
+
+
+
+public int InsertUpdateSpotAward(SpotAwardRequest request)
+{
+    int newSAID = 0;
+
+    try
+    {
+        using (SqlConnection connection = new SqlConnection(_connectionString))
+        {
+            SqlCommand cmd = new SqlCommand("SpotAwardWF_Master_InsertUpdate", connection);
+            cmd.CommandType = CommandType.StoredProcedure;
+
+            cmd.Parameters.AddWithValue("@SAID", request.SAID);
+            cmd.Parameters.AddWithValue("@InitiatorMEmpID", request.InitiatorMEmpID);
+            cmd.Parameters.AddWithValue("@NomineeMEmpID", request.NomineeMEmpID);
+            cmd.Parameters.AddWithValue("@Justification", request.Justification);
+            cmd.Parameters.AddWithValue("@ISGTHInitiated", request.IsGHTHInitiated); // fixed typo
+            cmd.Parameters.AddWithValue("@IsDelivered", request.IsDelivered);        // required param
+            cmd.Parameters.AddWithValue("@InitiatorMGID", request.InitiatorMGID);
+
+            connection.Open();
+
+            object result = cmd.ExecuteScalar();
+            if (result != null)
+            {
+                newSAID = Convert.ToInt32(result);
+            }
+        }
+    }
+    catch (Exception ex)
+    {
+        throw new Exception($"Error inserting/updating spot award: {ex.Message}");
+    }
+
+    return newSAID;
+}
+
+
+
+public class SubmitSpotAwardRequestDTO
+{
+    [Required]
+    public int InitiatorMEmpID { get; set; }
+
+    [Required]
+    public int NomineeMEmpID { get; set; }
+
+    [Required]
+    public int InitiatorMGID { get; set; }
+
+    [Required]
+    [StringLength(500)]
+    public string Justification { get; set; }
+
+    public bool IsGHTHInitiated { get; set; } = false;
+
+    public bool IsDelivered { get; set; } = false;  // NEW field
+}
