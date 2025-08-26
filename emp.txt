@@ -1,0 +1,105 @@
+[HttpGet("employees")]
+[ProducesResponseType(typeof(EmployeeNameListResponse), 200)]
+public IActionResult GetEmployees([FromQuery] string name = null)
+{
+    int currentUserMEmpID = GetCurrentUserMEmpID();
+
+    // ✅ Pass optional name to service (filtering happens in C#)
+    var employees = _spotAwardService.GetEmployeeList(name);
+
+    // ✅ Check eligibility for all employees
+    var eligibleEmployees = new List<EmployeeDetails>();
+    foreach (var employee in employees)
+    {
+        bool isEligible = _spotAwardService.CheckNomineeEligibility(employee.MEmpID, currentUserMEmpID);
+        if (isEligible)
+        {
+            eligibleEmployees.Add(employee);
+        }
+    }
+
+    // ✅ Extract only employee names
+    var employeeNames = eligibleEmployees.Select(e => e.EmployeeName).ToList();
+
+    return Ok(new EmployeeNameListResponse
+    {
+        Success = true,
+        Data = employeeNames,
+        Message = "Eligible employee names retrieved successfully."
+    });
+}
+
+
+
+
+
+public List<EmployeeDetails> GetEmployeeList(string employeeName = null)
+{
+    var employees = _businessLogic.GetEmployeesForNomination();
+
+    // ✅ Apply optional filtering in C#
+    if (!string.IsNullOrEmpty(employeeName))
+    {
+        employees = employees
+            .Where(e => e.EmployeeName.Contains(employeeName, StringComparison.OrdinalIgnoreCase))
+            .ToList();
+    }
+
+    return employees;
+}
+
+
+
+public List<EmployeeDetails> GetEmployeesForNomination()
+{
+    try
+    {
+        return _dataAccess.GetLiveEmployeeDetails(); // ✅ no params
+    }
+    catch (Exception ex)
+    {
+        throw new Exception($"Error retrieving employee details: {ex.Message}", ex);
+    }
+}
+
+
+
+
+public List<EmployeeDetails> GetLiveEmployeeDetails()
+{
+    var employees = new List<EmployeeDetails>();
+
+    try
+    {
+        using (SqlConnection connection = new SqlConnection(_connectionString))
+        using (SqlCommand cmd = new SqlCommand("WFSRV_LiveEMPDetails", connection))
+        {
+            cmd.CommandType = CommandType.StoredProcedure;
+            connection.Open();
+
+            using (SqlDataReader reader = cmd.ExecuteReader())
+            {
+                while (reader.Read())
+                {
+                    employees.Add(new EmployeeDetails
+                    {
+                        MEmpID       = reader["MEmpID"]       != DBNull.Value ? Convert.ToInt32(reader["MEmpID"]) : 0,
+                        EmployeeName = reader["EmployeeName"] != DBNull.Value ? reader["EmployeeName"].ToString() : string.Empty,
+                        MGID         = reader["MGID"]         != DBNull.Value ? Convert.ToInt32(reader["MGID"]) : 0,
+                        Department   = reader["Department"]   != DBNull.Value ? reader["Department"].ToString() : string.Empty,
+                        Level        = reader["Level"]        != DBNull.Value ? Convert.ToInt32(reader["Level"]) : 0
+                    });
+                }
+            }
+        }
+    }
+    catch (Exception ex)
+    {
+        throw new Exception($"Error loading employee details: {ex.Message}", ex);
+    }
+
+    return employees;
+}
+
+
+
